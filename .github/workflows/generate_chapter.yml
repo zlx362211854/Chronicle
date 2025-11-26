@@ -1,0 +1,86 @@
+name: Generate Daily Chapter
+
+on:
+  # Run daily at 7:00 AM Beijing Time (UTC 23:00 previous day)
+  schedule:
+    - cron: '0 23 * * *'
+  
+  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      chapter_id:
+        description: 'Chapter ID to generate (leave empty for next chapter)'
+        required: false
+        type: string
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Generate chapter
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: |
+          if [ -n "${{ github.event.inputs.chapter_id }}" ]; then
+            python scripts/generate_chapter.py ${{ github.event.inputs.chapter_id }}
+          else
+            python scripts/generate_chapter.py
+          fi
+      
+      - name: Update main README
+        run: |
+          python scripts/update_main_readme.py
+      
+      - name: Get chapter info
+        id: chapter_info
+        run: |
+          # Get the latest chapter directory
+          LATEST_CHAPTER=$(ls -d chapters/chapter_* 2>/dev/null | sort -V | tail -1)
+          if [ -n "$LATEST_CHAPTER" ]; then
+            CHAPTER_NUM=$(basename "$LATEST_CHAPTER" | sed 's/chapter_//')
+            echo "chapter_num=$CHAPTER_NUM" >> $GITHUB_OUTPUT
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Commit and push changes
+        if: steps.chapter_info.outputs.has_changes == 'true'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add .
+          git commit -m "📚 Add Chapter ${{ steps.chapter_info.outputs.chapter_num }} - Daily Update" || exit 0
+          git push
+      
+      - name: Create summary
+        if: steps.chapter_info.outputs.has_changes == 'true'
+        run: |
+          echo "## ✅ Chapter Generated Successfully" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Chapter:** ${{ steps.chapter_info.outputs.chapter_num }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Time:** $(date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The new chapter has been generated and committed to the repository." >> $GITHUB_STEP_SUMMARY
+
+

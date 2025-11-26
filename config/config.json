@@ -1,0 +1,30 @@
+{
+  "deepseek_api": {
+    "base_url": "https://api.deepseek.com/v1",
+    "model": "deepseek-chat",
+    "api_key_env": "DEEPSEEK_API_KEY"
+  },
+  "generation_settings": {
+    "temperature": 1.5,
+    "max_tokens": 8000,
+    "top_p": 0.95
+  },
+  "schedule": {
+    "time": "07:00",
+    "timezone": "Asia/Shanghai"
+  },
+  "output": {
+    "chapters_dir": "chapters",
+    "readme_filename": "README.md",
+    "encoding": "utf-8"
+  },
+  "images": {
+    "enabled": true,
+    "image_dir": "images",
+    "auto_download": false,
+    "search_source": "baidu",
+    "note": "auto_download is false - images will use direct URLs from Baidu instead of downloading"
+  }
+}
+
+
